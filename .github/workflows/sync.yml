@@ -1,0 +1,57 @@
+name: Scheduled sync
+
+# Unattended double-backup sync between GitHub and GitLab.
+#
+# Setup:
+#   1. Add a repository secret GITLAB_TOKEN (api + write_repository scopes).
+#   2. If syncing repos beyond this one / org repos, add a GH_PAT secret with
+#      'repo' scope and use it below instead of the default GITHUB_TOKEN.
+#   3. Commit a githublab-sync.yaml (secrets stay as ${...} placeholders).
+
+on:
+  schedule:
+    - cron: "0 */6 * * *" # every 6 hours
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run in dry-run mode (no changes)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: githublab-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install githublab-sync
+        run: python -m pip install .
+
+      - name: Doctor
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+        run: githublab-sync doctor
+
+      - name: Sync
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+        run: |
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            githublab-sync sync --dry-run
+          else
+            githublab-sync sync
+          fi
