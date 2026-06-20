@@ -134,8 +134,14 @@ def _cmd_doctor(args: argparse.Namespace) -> int:
     for provider_config in (config.github, config.gitlab):
         label = provider_config.kind
         if not provider_config.has_token:
-            log.error("%s: no token set", label)
-            ok = False
+            if provider_config.uses_ssh:
+                log.info(
+                    "%s: no API token — using SSH transport (repo create & PR sync disabled)",
+                    label,
+                )
+            else:
+                log.error("%s: no token set", label)
+                ok = False
             continue
         try:
             provider = build_provider(provider_config)
@@ -184,6 +190,10 @@ def _cmd_sync(args: argparse.Namespace) -> int:
         log.info("DRY RUN — no changes will be made")
 
     summary = sync_all(config, dry_run=args.dry_run)
+
+    for result in summary.results:
+        for error in result.errors:
+            log.error("%s: %s", result.name, error)
     _print_summary(summary, log)
 
     if summary.error_count:

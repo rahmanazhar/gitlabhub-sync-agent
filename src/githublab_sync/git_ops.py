@@ -25,12 +25,25 @@ class GitError(Exception):
     """Raised when a git invocation fails."""
 
 
+# Matches the credential portion of an HTTPS URL: scheme://<user:token>@host
+_CRED_PATTERN = re.compile(r"(://)[^/@\s]+@")
+
+
+def redact(text: str) -> str:
+    """Strip embedded credentials (``user:token@``) from URLs in ``text``."""
+    return _CRED_PATTERN.sub(r"\1***@", text)
+
+
 def run_git(
     args: list[str],
     cwd: Path | None = None,
     check: bool = True,
 ) -> subprocess.CompletedProcess[str]:
-    """Run ``git <args>`` returning the completed process."""
+    """Run ``git <args>`` returning the completed process.
+
+    On failure, any credentials embedded in the command or git's output are
+    redacted before they reach the exception message or logs.
+    """
     proc = subprocess.run(
         ["git", *args],
         cwd=str(cwd) if cwd else None,
@@ -39,7 +52,8 @@ def run_git(
     )
     if check and proc.returncode != 0:
         raise GitError(
-            f"git {' '.join(args)} failed ({proc.returncode}): {proc.stderr.strip()}"
+            f"git {redact(' '.join(args))} failed ({proc.returncode}): "
+            f"{redact(proc.stderr.strip())}"
         )
     return proc
 

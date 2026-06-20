@@ -6,6 +6,21 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- `clone_protocol: ssh` (and `ssh_user`) per provider: fetch/push over SSH with
+  no API token. Repo creation and PR/MR sync are skipped gracefully when a
+  provider has no token. `doctor` reports SSH-only providers without failing.
+
+### Fixed
+
+- Redact embedded credentials (`user:token@host`) from git error messages and
+  logs, honouring the documented "tokens are never logged" guarantee.
+- Surface per-repository error details in `sync` output (previously only the
+  error count was printed).
+- `--dry-run` no longer reports a spurious error when a mirror would be created:
+  it skips fetching a repository that does not exist yet.
+
 ## [0.1.0] - 2026-06-20
 
 ### Added

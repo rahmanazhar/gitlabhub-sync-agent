@@ -58,27 +58,33 @@ def _ensure_mirror(
     config: Config,
     result: RepoResult,
     dry_run: bool,
-) -> bool:
-    """Create ``repo_name`` on ``provider`` if missing. Returns False on failure."""
+) -> tuple[bool, bool]:
+    """Create ``repo_name`` on ``provider`` if missing.
+
+    Returns ``(proceed, available)``: ``proceed`` is False on a fatal error;
+    ``available`` is True when the repo can actually be fetched now (it already
+    existed, or was really created). In dry-run a would-be-created repo is
+    ``available=False`` so we don't try to fetch a repo that isn't there yet.
+    """
     try:
         if provider.repo_exists(repo_name):
-            return True
+            return True, True
     except ProviderError as exc:
         result.errors.append(f"{provider.kind}: existence check failed: {exc}")
-        return False
+        return False, False
 
     if not config.sync.create_missing:
         result.errors.append(
             f"{provider.kind}: '{provider.config.owner}/{repo_name}' missing and "
             "create_missing is disabled"
         )
-        return False
+        return False, False
 
     description = f"Mirror of {other.config.host}/{other.config.owner}/{other_name}"
     if dry_run:
         log.info("  [dry-run] would create mirror on %s: %s", provider.kind, repo_name)
         result.created_on.append(provider.kind)
-        return True
+        return True, False
     try:
         provider.create_repo(
             repo_name,
@@ -87,10 +93,10 @@ def _ensure_mirror(
         )
         result.created_on.append(provider.kind)
         log.info("  created mirror on %s: %s", provider.kind, repo_name)
-        return True
+        return True, True
     except ProviderError as exc:
         result.errors.append(f"{provider.kind}: could not create '{repo_name}': {exc}")
-        return False
+        return False, False
 
 
 def sync_repo(
@@ -109,22 +115,32 @@ def sync_repo(
     need_github = direction in ("bidirectional", "gitlab-to-github")
     need_gitlab = direction in ("bidirectional", "github-to-gitlab")
 
-    if need_gitlab and not _ensure_mirror(
-        gitlab, mapping.gitlab_name, github, mapping.github_name, config, result, dry_run
-    ):
-        return result
-    if need_github and not _ensure_mirror(
-        github, mapping.github_name, gitlab, mapping.gitlab_name, config, result, dry_run
-    ):
-        return result
+    # Sides that aren't being ensured are the existing source — assume present.
+    gh_available = True
+    gl_available = True
+
+    if need_gitlab:
+        proceed, gl_available = _ensure_mirror(
+            gitlab, mapping.gitlab_name, github, mapping.github_name, config, result, dry_run
+        )
+        if not proceed:
+            return result
+    if need_github:
+        proceed, gh_available = _ensure_mirror(
+            github, mapping.github_name, gitlab, mapping.gitlab_name, config, result, dry_run
+        )
+        if not proceed:
+            return result
 
     gh_url = github.authenticated_clone_url(mapping.github_name)
     gl_url = gitlab.authenticated_clone_url(mapping.gitlab_name)
 
     cache = MirrorCache(config.sync.cache_dir, mapping.name)
     try:
-        cache.fetch("github", gh_url)
-        cache.fetch("gitlab", gl_url)
+        if gh_available:
+            cache.fetch("github", gh_url)
+        if gl_available:
+            cache.fetch("gitlab", gl_url)
     except GitError as exc:
         result.errors.append(f"fetch failed: {exc}")
         return result
@@ -154,12 +170,17 @@ def sync_repo(
         return result
 
     if config.sync.sync_pull_requests:
-        try:
-            result.pr_actions = sync_pull_requests(
-                mapping, github, gitlab, config.sync, dry_run
+        if not config.github.has_token or not config.gitlab.has_token:
+            log.info(
+                "  skipping PR/MR sync: requires an API token on both providers"
             )
-        except ProviderError as exc:
-            result.errors.append(f"pull-request sync failed: {exc}")
+        else:
+            try:
+                result.pr_actions = sync_pull_requests(
+                    mapping, github, gitlab, config.sync, dry_run
+                )
+            except ProviderError as exc:
+                result.errors.append(f"pull-request sync failed: {exc}")
 
     return result
 

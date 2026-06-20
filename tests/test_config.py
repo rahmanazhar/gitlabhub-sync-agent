@@ -74,3 +74,26 @@ def test_requires_repositories(tmp_path, monkeypatch):
 def test_missing_file(tmp_path):
     with pytest.raises(ConfigError, match="not found"):
         load_config(tmp_path / "nope.yaml")
+
+
+def test_ssh_clone_protocol(tmp_path, monkeypatch):
+    monkeypatch.setenv("GH_TOKEN", "x")
+    monkeypatch.setenv("GL_TOKEN", "")
+    text = VALID.replace(
+        "  owner: my-group\n  token: ${GL_TOKEN}",
+        "  owner: my-group\n  token: ${GL_TOKEN}\n  clone_protocol: ssh",
+    )
+    config = load_config(_write(tmp_path, text))
+    assert config.gitlab.uses_ssh is True
+    assert config.github.uses_ssh is False
+
+
+def test_invalid_clone_protocol(tmp_path, monkeypatch):
+    monkeypatch.setenv("GH_TOKEN", "x")
+    monkeypatch.setenv("GL_TOKEN", "y")
+    bad = VALID.replace(
+        "  owner: my-group\n  token: ${GL_TOKEN}",
+        "  owner: my-group\n  token: ${GL_TOKEN}\n  clone_protocol: ftp",
+    )
+    with pytest.raises(ConfigError, match="clone_protocol"):
+        load_config(_write(tmp_path, bad))

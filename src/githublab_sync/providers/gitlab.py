@@ -70,6 +70,8 @@ class GitLabProvider(RepoProvider):
         return response.json().get("default_branch")
 
     def authenticated_clone_url(self, name: str) -> str:
+        if self.config.uses_ssh:
+            return self._ssh_clone_url(self._project_path(name))
         token = self.config.token
         host = self.config.host
         if token:

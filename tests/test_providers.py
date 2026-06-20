@@ -7,6 +7,7 @@ import json as jsonlib
 from githublab_sync.config import ProviderConfig, RepoMapping, SyncOptions
 from githublab_sync.providers.base import PullRequest, RepoProvider
 from githublab_sync.providers.github import GitHubProvider
+from githublab_sync.providers.gitlab import GitLabProvider
 from githublab_sync.pull_requests import sync_pull_requests
 
 
@@ -85,6 +86,21 @@ def test_authenticated_clone_url_embeds_token():
     provider = GitHubProvider(_gh_config(), session=FakeSession(lambda *a: None))
     url = provider.authenticated_clone_url("repo")
     assert url == "https://x-access-token:tok@github.com/acme/repo.git"
+
+
+def test_authenticated_clone_url_ssh():
+    config = ProviderConfig(
+        kind="gitlab",
+        token="",
+        owner="rahmanazhar",
+        host="gitlab.example.com",
+        api_url="https://gitlab.example.com/api/v4",
+        clone_protocol="ssh",
+    )
+    provider = GitLabProvider(config, session=FakeSession(lambda *a: None))
+    assert provider.authenticated_clone_url("proj") == (
+        "git@gitlab.example.com:rahmanazhar/proj.git"
+    )
 
 
 # --- PR/MR orchestration ---------------------------------------------------

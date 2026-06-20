@@ -154,6 +154,8 @@ by default; commit `githublab-sync.example.yaml` instead).
 | `<provider>.token` | — | API token, typically `${GITHUB_TOKEN}` / `${GITLAB_TOKEN}` |
 | `<provider>.host` | `github.com` / `gitlab.com` | Host for Enterprise / self-managed |
 | `<provider>.api_url` | provider default | REST API base URL |
+| `<provider>.clone_protocol` | `https` | `https` (token-embedded) or `ssh` git transport |
+| `<provider>.ssh_user` | `git` | SSH user when `clone_protocol: ssh` |
 | `sync.direction` | `bidirectional` | Sync direction |
 | `sync.create_missing` | `true` | Create the repo on a provider if absent |
 | `sync.sync_branches` | `true` | Sync branches |
@@ -172,6 +174,16 @@ by default; commit `githublab-sync.example.yaml` instead).
 
 Provide them via environment variables (`GITHUB_TOKEN`, `GITLAB_TOKEN`) or a
 `.env` file (see [.env.example](.env.example)). **Never commit real tokens.**
+
+### SSH transport (no API token)
+
+Set `clone_protocol: ssh` on a provider to fetch and push over SSH using your
+existing SSH key instead of an HTTPS token. This is handy for self-managed
+GitLab where you have SSH access but no API token, and it sidesteps OAuth
+tokens that lack the `workflow` scope (GitHub rejects HTTPS pushes that touch
+`.github/workflows/*` without it). With SSH transport the git sync needs no
+token; an API token is still required only for **creating** missing mirrors and
+for **PR/MR sync** — both are skipped automatically when the token is absent.
 
 ## Usage
 

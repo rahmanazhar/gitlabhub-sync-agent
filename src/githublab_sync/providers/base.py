@@ -76,6 +76,10 @@ class RepoProvider(abc.ABC):
         """Return the authenticated account login (used by ``doctor``)."""
 
     # -- shared helpers -------------------------------------------------------
+    def _ssh_clone_url(self, project_path: str) -> str:
+        """SSH clone URL, e.g. ``git@host:owner/name.git`` (no token needed)."""
+        return f"{self.config.ssh_user}@{self.config.host}:{project_path}.git"
+
     def _request(
         self,
         method: str,

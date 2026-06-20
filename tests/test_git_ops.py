@@ -10,10 +10,24 @@ import pytest
 
 from githublab_sync.git_ops import (
     MirrorCache,
+    redact,
     run_git,
     sync_branches_bidirectional,
     sync_tags_bidirectional,
 )
+
+
+def test_redact_strips_credentials():
+    assert (
+        redact("push https://x-access-token:gho_secret@github.com/o/r.git")
+        == "push https://***@github.com/o/r.git"
+    )
+    assert (
+        redact("https://oauth2:glpat-abc@gitlab.example.com/o/r.git")
+        == "https://***@gitlab.example.com/o/r.git"
+    )
+    # SSH URLs and plain text are left untouched.
+    assert redact("git@github.com:o/r.git") == "git@github.com:o/r.git"
 
 pytestmark = pytest.mark.skipif(shutil.which("git") is None, reason="git not installed")
 

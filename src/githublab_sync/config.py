@@ -14,6 +14,7 @@ _ENV_PATTERN = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
 
 VALID_DIRECTIONS = ("bidirectional", "github-to-gitlab", "gitlab-to-github")
 VALID_VISIBILITY = ("private", "public", "internal")
+VALID_PROTOCOLS = ("https", "ssh")
 
 
 class ConfigError(Exception):
@@ -50,10 +51,16 @@ class ProviderConfig:
     owner: str  # user / org (GitHub) or group / namespace path (GitLab)
     host: str
     api_url: str
+    clone_protocol: str = "https"  # "https" (token-embedded) or "ssh"
+    ssh_user: str = "git"
 
     @property
     def has_token(self) -> bool:
         return bool(self.token)
+
+    @property
+    def uses_ssh(self) -> bool:
+        return self.clone_protocol == "ssh"
 
 
 @dataclass
@@ -101,12 +108,19 @@ def _build_provider(kind: str, raw: dict[str, Any]) -> ProviderConfig:
     owner = raw.get("owner")
     if not owner:
         raise ConfigError(f"'{kind}.owner' is required")
+    clone_protocol = str(raw.get("clone_protocol", "https"))
+    if clone_protocol not in VALID_PROTOCOLS:
+        raise ConfigError(
+            f"'{kind}.clone_protocol' must be one of {VALID_PROTOCOLS}, got '{clone_protocol}'"
+        )
     return ProviderConfig(
         kind=kind,
         token=str(raw.get("token", "")),
         owner=str(owner),
         host=host,
         api_url=api_url,
+        clone_protocol=clone_protocol,
+        ssh_user=str(raw.get("ssh_user", "git")),
     )
 
 
