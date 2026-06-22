@@ -11,6 +11,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `clone_protocol: ssh` (and `ssh_user`) per provider: fetch/push over SSH with
   no API token. Repo creation and PR/MR sync are skipped gracefully when a
   provider has no token. `doctor` reports SSH-only providers without failing.
+- Pure-SSH bidirectional mirroring: a provider with no API token is assumed to
+  exist (it cannot be created without one), so branch/tag sync works token-free.
+- macOS launchd scheduler: `scripts/run-sync.sh` wrapper, a plist template under
+  `packaging/launchd/`, and `scripts/install-launchd.sh` to install/remove a
+  timed local sync that uses your existing SSH key and `gh` login.
 
 ### Fixed
 

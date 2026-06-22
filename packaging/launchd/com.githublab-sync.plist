@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  launchd job template for githublab-sync.
+  Placeholders (@...@) are filled in by scripts/install-launchd.sh.
+  Do not load this template directly.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>@LABEL@</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>@WRAPPER@</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>GITHUBLAB_SYNC_DIR</key>
+        <string>@PROJECT_DIR@</string>
+        <key>GITHUBLAB_SYNC_CONFIG</key>
+        <string>@CONFIG@</string>
+    </dict>
+
+    <key>StartInterval</key>
+    <integer>@INTERVAL@</integer>
+
+    <key>RunAtLoad</key>
+    <@RUN_AT_LOAD@/>
+
+    <key>StandardOutPath</key>
+    <string>@LOG@</string>
+    <key>StandardErrorPath</key>
+    <string>@LOG@</string>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+    <key>LowPriorityIO</key>
+    <true/>
+</dict>
+</plist>

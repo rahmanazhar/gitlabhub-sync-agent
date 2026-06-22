@@ -202,16 +202,36 @@ githublab-sync sync   [--config PATH] [--dry-run] [--repo NAME ...] [--direction
 
 ## Running unattended
 
-A scheduled GitHub Actions workflow is included at
-[.github/workflows/sync.yml](.github/workflows/sync.yml). Add `GITLAB_TOKEN` as a
-repository secret (and grant the workflow token repo access) and it runs every
-6 hours.
+### macOS (launchd) — recommended for a local backup
 
-Plain cron works too:
+Run the sync on a timer using your existing SSH key + `gh` login, with no
+secrets uploaded anywhere:
+
+```bash
+scripts/install-launchd.sh                 # every 6h, config ./githublab-sync.yaml
+scripts/install-launchd.sh --interval 3600 # hourly
+launchctl kickstart -k gui/$(id -u)/com.githublab-sync   # run once now
+scripts/install-launchd.sh --uninstall     # remove the job
+```
+
+Logs go to `~/Library/Logs/githublab-sync.log`. The job runs
+[scripts/run-sync.sh](scripts/run-sync.sh), which resolves `GITHUB_TOKEN` from
+`gh auth token` (or a local `.env`) and finds the CLI automatically. Make sure
+your SSH key is usable non-interactively — e.g. no passphrase, or added to the
+macOS keychain: `ssh-add --apple-use-keychain ~/.ssh/id_ed25519`.
+
+### Linux / cron
 
 ```cron
 0 */6 * * * cd /opt/githublab-sync && GITHUB_TOKEN=… GITLAB_TOKEN=… githublab-sync sync >> sync.log 2>&1
 ```
+
+### GitHub Actions
+
+A scheduled workflow is included at
+[.github/workflows/sync.yml](.github/workflows/sync.yml). Add `GITLAB_TOKEN` as a
+repository secret (and, for a self-managed GitLab reachable only via SSH, an SSH
+deploy key) and it runs every 6 hours on GitHub's runners.
 
 ## Using the Claude Code agent
 

@@ -66,6 +66,12 @@ def _ensure_mirror(
     existed, or was really created). In dry-run a would-be-created repo is
     ``available=False`` so we don't try to fetch a repo that isn't there yet.
     """
+    if not provider.config.has_token:
+        # No REST access: we can neither verify nor create the repo via the API
+        # (creation requires a token). Assume it exists and let the git fetch
+        # surface a clear error if it does not. This is what makes pure-SSH
+        # bidirectional mirroring work without an API token.
+        return True, True
     try:
         if provider.repo_exists(repo_name):
             return True, True
